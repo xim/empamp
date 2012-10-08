@@ -1,2 +1,9 @@
-mediaplayer:
-	gcc -Wall mediaplayer.c -o mediaplayer $(pkg-config --cflags --libs gstreamer-0.10)
+.PHONY: all clean
+
+all: mediaplayer
+
+clean:
+	rm mediaplayer
+
+mediaplayer: mediaplayer.c
+	gcc -Wall mediaplayer.c -o mediaplayer `pkg-config --cflags --libs gstreamer-1.0`

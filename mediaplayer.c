@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <gst/gst.h>
 #include <glib.h>
 
@@ -67,7 +68,7 @@ int main (int argc, char *argv[])
 	/* Check input arguments */
 	if (argc != 2) {
 		g_printerr ("Usage: %s <Ogg/Vorbis filename>\n", argv[0]);
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 
@@ -82,7 +83,7 @@ int main (int argc, char *argv[])
 
 	if (!pipeline || !source || !demuxer || !decoder || !conv || !sink) {
 		g_printerr ("One element could not be created. Exiting.\n");
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	/* Set up the pipeline */
@@ -131,5 +132,5 @@ int main (int argc, char *argv[])
 	g_print ("Deleting pipeline\n");
 	gst_object_unref (GST_OBJECT (pipeline));
 
-	return 0;
+	return EXIT_SUCCESS;
 }

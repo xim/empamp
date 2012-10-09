@@ -74,7 +74,7 @@ int main (int argc, char *argv[])
 	if (!g_thread_supported ())
 		g_thread_init (NULL);
 
-	ctx = g_option_context_new ("- play media files");
+	ctx = g_option_context_new ("filename [more filenames] - play media files");
 	g_option_context_add_main_entries (ctx, entries, NULL);
 	g_option_context_add_group (ctx, gst_init_get_option_group ());
 	if (!g_option_context_parse (ctx, &argc, &argv, &err)) {
@@ -90,8 +90,8 @@ int main (int argc, char *argv[])
 
 
 	/* Check input arguments */
-	if (argc != 2) {
-		g_printerr ("Usage: %s filename\n", argv[0]);
+	if (argc < 2) {
+		g_printerr (g_option_context_get_help (ctx, TRUE, NULL));
 		return EXIT_FAILURE;
 	}
 
@@ -110,9 +110,6 @@ int main (int argc, char *argv[])
 	}
 
 	/* Set up the pipeline */
-
-	/* we set the input filename to the source element */
-	g_object_set (G_OBJECT (source), "location", argv[1], NULL);
 
 	/* we add a message handler */
 	bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
@@ -137,22 +134,27 @@ int main (int argc, char *argv[])
 	Therefore we connect a callback function which will be executed
 	when the "pad-added" is emitted.*/
 
+	for (int i = 1 ; i != argc ; i++) {
 
-	/* Set the pipeline to "playing" state*/
-	g_print ("Now playing: %s\n", argv[1]);
-	gst_element_set_state (pipeline, GST_STATE_PLAYING);
-
-
-	/* Iterate */
-	if (empamp_verbose)
-		g_print ("Running...\n");
-	g_main_loop_run (loop);
+		/* we set the input filename to the source element */
+		g_object_set (G_OBJECT (source), "location", argv[i], NULL);
 
 
-	/* Out of the main loop, clean up nicely */
-	if (empamp_verbose)
+		/* Set the pipeline to "playing" state*/
+		g_print ("Now playing: %s\n", argv[i]);
+		gst_element_set_state (pipeline, GST_STATE_PLAYING);
+
+
+		/* Iterate */
+		if (empamp_verbose)
+			g_print ("Running...\n");
+		g_main_loop_run (loop);
+
+
+		/* Out of the main loop, clean up nicely */
 		g_print ("Returned, stopping playback\n");
-	gst_element_set_state (pipeline, GST_STATE_NULL);
+		gst_element_set_state (pipeline, GST_STATE_NULL);
+	}
 
 	if (empamp_verbose)
 		g_print ("Deleting pipeline\n");

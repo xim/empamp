@@ -58,7 +58,7 @@ int main (int argc, char *argv[])
 
 	GMainLoop *loop;
 
-	GstElement *pipeline, *source, *demuxer, *decoder, *conv, *sink;
+	GstElement *pipeline, *source, *decoder, *conv, *sink;
 	GstBus *bus;
 
 	GOptionContext *ctx;
@@ -91,7 +91,7 @@ int main (int argc, char *argv[])
 
 	/* Check input arguments */
 	if (argc != 2) {
-		g_printerr ("Usage: %s <Ogg/Vorbis filename>\n", argv[0]);
+		g_printerr ("Usage: %s filename\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 
@@ -99,13 +99,12 @@ int main (int argc, char *argv[])
 	/* Create gstreamer elements */
 	pipeline = gst_pipeline_new ("audio-player");
 	source   = gst_element_factory_make ("filesrc",       "file-source");
-	demuxer  = gst_element_factory_make ("oggdemux",      "ogg-demuxer");
-	decoder  = gst_element_factory_make ("vorbisdec",     "vorbis-decoder");
+	decoder  = gst_element_factory_make ("decodebin",     "decoder");
 
 	conv     = gst_element_factory_make ("audioconvert",  "converter");
 	sink     = gst_element_factory_make ("autoaudiosink", "audio-output");
 
-	if (!pipeline || !source || !demuxer || !decoder || !conv || !sink) {
+	if (!pipeline || !source || !decoder || !conv || !sink) {
 		g_printerr ("One element could not be created. Exiting.\n");
 		return EXIT_FAILURE;
 	}
@@ -121,17 +120,17 @@ int main (int argc, char *argv[])
 	gst_object_unref (bus);
 
 	/* we add all elements into the pipeline */
-	/* file-source | ogg-demuxer | vorbis-decoder | converter | alsa-output */
+	/* file-source | decodebin | converter | alsa-output */
 	gst_bin_add_many (GST_BIN (pipeline),
-		    source, demuxer, decoder, conv, sink, NULL);
+			source, decoder, conv, sink, NULL);
 
 	/* we link the elements together */
 	/* file-source -> ogg-demuxer ~> vorbis-decoder -> converter -> alsa-output */
-	gst_element_link (source, demuxer);
-	gst_element_link_many (decoder, conv, sink, NULL);
-	g_signal_connect (demuxer, "pad-added", G_CALLBACK (on_pad_added), decoder);
+	gst_element_link (source, decoder);
+	gst_element_link_many (conv, sink, NULL);
+	g_signal_connect (decoder, "pad-added", G_CALLBACK (on_pad_added), conv);
 
-	/* note that the demuxer will be linked to the decoder dynamically.
+	/* note that the decoder will be linked to the converter dynamically.
 	The reason is that Ogg may contain various streams (for example
 	audio and video). The source pad(s) will be created at run time,
 	by the demuxer when it detects the amount and nature of streams.

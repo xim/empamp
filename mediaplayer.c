@@ -2,6 +2,7 @@
 #include <gst/gst.h>
 #include <glib.h>
 
+gboolean empamp_verbose = FALSE;
 
 static gboolean bus_call (GstBus *bus, GstMessage *msg, gpointer data)
 {
@@ -54,10 +55,33 @@ static void on_pad_added (GstElement *element, GstPad *pad, gpointer data)
 
 int main (int argc, char *argv[])
 {
+
 	GMainLoop *loop;
 
 	GstElement *pipeline, *source, *demuxer, *decoder, *conv, *sink;
 	GstBus *bus;
+
+	GOptionContext *ctx;
+	GError *err = NULL;
+	GOptionEntry entries[] = {
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &empamp_verbose,
+			"Output verbosely", NULL },
+		{ NULL }
+	};
+
+	/* we must initialise the threading system before using any
+	 *    * other GLib funtion, such as g_option_context_new() */
+	if (!g_thread_supported ())
+		g_thread_init (NULL);
+
+	ctx = g_option_context_new ("- play media files");
+	g_option_context_add_main_entries (ctx, entries, NULL);
+	g_option_context_add_group (ctx, gst_init_get_option_group ());
+	if (!g_option_context_parse (ctx, &argc, &argv, &err)) {
+		g_print ("%s\n", err->message);
+		g_error_free (err);
+		return EXIT_FAILURE;
+	}
 
 	/* Initialisation */
 	gst_init (&argc, &argv);
@@ -121,15 +145,18 @@ int main (int argc, char *argv[])
 
 
 	/* Iterate */
-	g_print ("Running...\n");
+	if (empamp_verbose)
+		g_print ("Running...\n");
 	g_main_loop_run (loop);
 
 
 	/* Out of the main loop, clean up nicely */
-	g_print ("Returned, stopping playback\n");
+	if (empamp_verbose)
+		g_print ("Returned, stopping playback\n");
 	gst_element_set_state (pipeline, GST_STATE_NULL);
 
-	g_print ("Deleting pipeline\n");
+	if (empamp_verbose)
+		g_print ("Deleting pipeline\n");
 	gst_object_unref (GST_OBJECT (pipeline));
 
 	return EXIT_SUCCESS;

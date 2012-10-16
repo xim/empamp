@@ -1,11 +1,11 @@
-#include <stdlib.h>
-#include <string.h>
-#include <gst/gst.h>
-#include <glib.h>
+#include "mediaplayer.h"
+#include "mpgui.h"
 
-gboolean empamp_verbose = FALSE;
-int playlist_index = -1, playlist_size = 0;
-char **playlist = NULL;
+static gboolean empamp_verbose = FALSE;
+static int playlist_index = -1, playlist_size = 0;
+static char **playlist = NULL;
+
+static GstElement *playbin = NULL;
 
 static void handle_eos (GstBus *bus, GstMessage *msg, GMainLoop *loop)
 {
@@ -38,7 +38,7 @@ static void handle_warning (GstBus *bus, GstMessage *msg, GMainLoop *loop)
 	g_error_free (error);
 }
 
-static void handle_clock_loss (GstBus *bus, GstMessage *msg, GstElement *playbin)
+static void handle_clock_loss (GstBus *bus, GstMessage *msg)
 {
 	GstClock *clock;
 
@@ -68,13 +68,13 @@ static gchar * try_force_to_uri (gchar *path)
 	return path;
 }
 
-static void playlist_set_previous (GstElement *playbin)
+void playlist_set_previous ()
 {
 	playlist_index = (playlist_index - 1) % playlist_size;
 	g_object_set (G_OBJECT (playbin), "uri", playlist[playlist_index], NULL);
 }
 
-static void playlist_set_next (GstElement *playbin)
+void playlist_set_next ()
 {
 	playlist_index = (playlist_index + 1) % playlist_size;
 	if (empamp_verbose)
@@ -82,7 +82,7 @@ static void playlist_set_next (GstElement *playbin)
 	g_object_set (G_OBJECT (playbin), "uri", playlist[playlist_index], NULL);
 }
 
-static void toggle_play_pause (GstElement *playbin) {
+void toggle_play_pause () {
 	GstState state;
 	gst_element_get_state (playbin, &state, NULL, GST_CLOCK_TIME_NONE);
 	if (state == GST_STATE_PLAYING) {
@@ -92,7 +92,12 @@ static void toggle_play_pause (GstElement *playbin) {
 	}
 }
 
-static gboolean print_progress (GstElement *playbin)
+void set_volume (int volume) {
+	gdouble vol = ((gdouble) volume) / 100;
+	g_object_set (G_OBJECT (playbin), "volume", vol, NULL);
+}
+
+gboolean print_progress ()
 {
 	gint64 duration = -1;
 	gint64 position = -1;
@@ -124,7 +129,6 @@ int main (int argc, char *argv[])
 
 	GMainLoop *loop;
 
-	GstElement *playbin;
 	GstBus *bus;
 
 	GOptionContext *ctx;
@@ -190,15 +194,18 @@ int main (int argc, char *argv[])
 	/* Handle adding the next element in the playlist. This makes us gapless */
 	g_signal_connect (playbin, "about-to-finish", G_CALLBACK (playlist_set_next), NULL);
 
-	playlist_set_next (playbin);
-	toggle_play_pause (playbin);
+	playlist_set_next ();
+	toggle_play_pause ();
 
-	g_timeout_add (33, (GSourceFunc) print_progress, playbin);
+	//g_timeout_add (33, (GSourceFunc) print_progress, playbin);
 
 	/* Iterate */
 	if (empamp_verbose)
 		g_print ("Running...\n");
+
+	init_gui ();
 	g_main_loop_run (loop);
+	kill_gui ();
 
 
 	/* Out of the main loop, clean up nicely */

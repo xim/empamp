@@ -1,4 +1,5 @@
-#include <mpgui.h>
+#include "mpgui.h"
+#include "mediaplayer.h"
 
 int volume;
 
@@ -26,6 +27,7 @@ void update_gui (void)
 void update_gst (void)
 {
 	/* TODO: update GST after key event here. */
+	set_volume(volume);
 }
 
 /* identify recent key event and update everthing else accordingly. */

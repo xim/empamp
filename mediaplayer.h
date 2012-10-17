@@ -1,6 +1,6 @@
 
 #ifndef MEDIAPLAYER_H
-	
+
 	#define MEDIAPLAYER_H
 
 	#include <stdlib.h>

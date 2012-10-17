@@ -137,12 +137,12 @@ int main (int argc, char *argv[])
 		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &empamp_verbose,
 			"Output verbosely", NULL },
 		{ G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &playlist,
-			    "Filename(s)" },
+			"Filename(s)" },
 		{ NULL }
 	};
 
 	/* we must initialise the threading system before using any
-	 *    * other GLib funtion, such as g_option_context_new() */
+	 * other GLib funtion, such as g_option_context_new() */
 	if (!g_thread_supported ())
 		g_thread_init (NULL);
 	gst_init (&argc, &argv);

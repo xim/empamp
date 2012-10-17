@@ -26,7 +26,7 @@ void update_gui (void)
 
 static int db_to_percent (int db)
 {
-  return (int) 100 * ((float) pow (2.0, (float) db / 6));
+	return (int) 100 * ((float) pow (2.0, (float) db / 6));
 }
 
 void update_gst (void)
@@ -46,7 +46,7 @@ void identify_key (char key)
 			break;
 
 		case QUIETER_KEY:
-		  volume -= VOLUME_STEP;
+			volume -= VOLUME_STEP;
 			break;
 	}
 
@@ -85,15 +85,15 @@ int init_gui ()
 	noecho();
 
 	/* get window size. */
- 	getmaxyx(stdscr, term_height, term_width);
+	getmaxyx(stdscr, term_height, term_width);
 
 	/* spawn keyboard input listening thread. */
-    pthread_t kbi_thread;
+	pthread_t kbi_thread;
 
 	int pret = pthread_create (&kbi_thread, NULL, key_listener, NULL);
 
-    if (pret < 0)
-        return EXIT_FAILURE;
+	if (pret < 0)
+		return EXIT_FAILURE;
 
 	/* lastly, init control parameters. */
 	volume = INITIAL_VOLUME;

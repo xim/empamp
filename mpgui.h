@@ -6,11 +6,12 @@
 	#include <stdlib.h>
 	#include <ncurses.h>
 	#include <pthread.h>
+  #include <math.h>
 
 	#define MSECS_IN_NSECS 1000000
 
-	#define INITIAL_VOLUME 100
-	#define VOLUME_STEP 5
+	#define INITIAL_VOLUME 0
+	#define VOLUME_STEP 1
 	#define LOUDER_KEY 'm'
 	#define QUIETER_KEY 'n'
 

@@ -11,7 +11,7 @@ void update_gui (void)
 
 	/* format volume string. */
 	char *vol_string = malloc (4 * sizeof(char));
-	sprintf(vol_string, "%d%%", volume);
+	sprintf(vol_string, "%d dB", volume);
 
 	/* clear printing area, then print. */
 	mvaddstr (term_height - 1, 0, "    ");
@@ -27,7 +27,12 @@ void update_gui (void)
 void update_gst (void)
 {
 	/* TODO: update GST after key event here. */
-	set_volume(volume);
+	set_volume(db_to_percent(volume));
+}
+
+int db_to_percent (int db)
+{
+  return (int) 100 * ((float) pow (2.0, (float) db / 6));
 }
 
 /* identify recent key event and update everthing else accordingly. */
@@ -36,13 +41,12 @@ void identify_key (char key)
 	switch (key) {
 
 		case LOUDER_KEY:
-			if (volume < 100 - VOLUME_STEP + 1)
+			if (volume <= (0 - VOLUME_STEP))
 				volume += VOLUME_STEP;
 			break;
 
 		case QUIETER_KEY:
-			if (volume > VOLUME_STEP - 1)
-				volume -= VOLUME_STEP;
+		  volume -= VOLUME_STEP;
 			break;
 	}
 

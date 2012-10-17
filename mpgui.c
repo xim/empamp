@@ -24,15 +24,15 @@ void update_gui (void)
 	free (vol_string);
 }
 
+static int db_to_percent (int db)
+{
+  return (int) 100 * ((float) pow (2.0, (float) db / 6));
+}
+
 void update_gst (void)
 {
 	/* TODO: update GST after key event here. */
 	set_volume(db_to_percent(volume));
-}
-
-int db_to_percent (int db)
-{
-  return (int) 100 * ((float) pow (2.0, (float) db / 6));
 }
 
 /* identify recent key event and update everthing else accordingly. */

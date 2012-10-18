@@ -24,7 +24,7 @@ static struct keydesc keymapping[] = {
 static void update_gui (void)
 {
 	/* format volume string. */
-	mvprintw (term_height - 1, term_width - 6, "%d dB  ", volume);
+	mvprintw (term_height - 1, term_width - 7, "%d dB  ", volume);
 
 	/* update display. */
 	refresh();
@@ -41,13 +41,18 @@ void set_pos (char *position)
 	mvprintw (term_height - 1, 0, "%s", position);
 	refresh();
 }
-void set_status (char *message)
+void set_status (char *message, ...)
 {
 	move (((current_logline + 1) % max_logline_offset) + min_logline, 0);
 	clrtoeol();
 	move (current_logline + min_logline, 0);
 	clrtoeol();
-	printw (message);
+	va_list argptr;
+	char output[term_width];
+	va_start (argptr, message);
+	vsnprintf (output, term_width, message, argptr);
+	va_end (argptr);
+	printw (output);
 	current_logline = (current_logline + 1) % max_logline_offset;
 }
 
@@ -141,6 +146,8 @@ int init_gui ()
 	
 void kill_gui ()
 {
+	move (term_height - 1, 0);
+	clrtoeol ();
 	/* close up NCURSES window. */
 	refresh();
 	endwin();

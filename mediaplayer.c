@@ -22,9 +22,7 @@ static void handle_error (GstBus *bus, GstMessage *msg)
 	GError *error;
 
 	gst_message_parse_error (msg, &error, &debug);
-	char errmsg[term_width];
-	snprintf (errmsg, term_width, "ERROR: %s (%s)", error->message, (debug) ? debug : "no details");
-	set_status (errmsg);
+	set_status ("ERROR: %s (%s)", error->message, (debug) ? debug : "no details");
 	g_free (debug);
 	g_error_free (error);
 
@@ -37,9 +35,7 @@ static void handle_warning (GstBus *bus, GstMessage *msg)
 	GError *error;
 
 	gst_message_parse_warning (msg, &error, &debug);
-	char warnmsg[term_width];
-	snprintf (warnmsg, term_width, "WARNING: %s (%s)", error->message, (debug) ? debug : "no details");
-	set_status (warnmsg);
+	set_status ("WARNING: %s (%s)", error->message, (debug) ? debug : "no details");
 	g_free (debug);
 	g_error_free (error);
 }
@@ -49,9 +45,7 @@ static void handle_clock_loss (GstBus *bus, GstMessage *msg)
 	GstClock *clock;
 
 	gst_message_parse_clock_lost (msg, &clock);
-	char warnmsg[term_width];
-	snprintf (warnmsg, term_width, "CLOCK LOST: %s", GST_OBJECT_NAME (clock));
-	set_status (warnmsg);
+	set_status ("CLOCK LOST: %s", GST_OBJECT_NAME (clock));
 
 	gst_element_set_state (playbin, GST_STATE_PAUSED);
 	gst_element_set_state (playbin, GST_STATE_PLAYING);
@@ -80,9 +74,7 @@ static gchar * try_force_to_uri (gchar *path)
 static void playlist_set_next ()
 {
 	playlist_index = (playlist_index + 1) % playlist_size;
-	char msg[term_width];
-	snprintf (msg, term_width, "Queueing file: %s", playlist[playlist_index]);
-	set_status (msg);
+	set_status ("Queueing file: %s", playlist[playlist_index]);
 	g_object_set (G_OBJECT (playbin), "uri", playlist_uris[playlist_index], NULL);
 }
 

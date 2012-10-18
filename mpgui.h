@@ -7,6 +7,7 @@
 	#include <math.h>
 	#include <ncurses.h>
 	#include <pthread.h>
+	#include <stdarg.h>
 	#include <stdlib.h>
 	#include "mediaplayer.h"
 
@@ -20,7 +21,7 @@
 	void *key_listener ();
 	void kill_gui ();
 	void set_pos (char *position);
-	void set_status (char *message);
+	void set_status (char *message, ...);
 
 	struct keydesc {
 		int code;

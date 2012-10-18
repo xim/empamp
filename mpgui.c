@@ -1,6 +1,11 @@
 #include "mpgui.h"
 #include "mediaplayer.h"
 
+struct keydesc {
+	int code;
+	void (*function)();
+};
+
 int volume;
 
 int term_height, term_width;
@@ -10,18 +15,15 @@ void update_gui (void)
 	/* update gui after key event here. */
 
 	/* format volume string. */
-	char *vol_string = malloc (4 * sizeof(char));
-	sprintf(vol_string, "%d dB", volume);
-
-	/* clear printing area, then print. */
-	mvaddstr (term_height - 1, 0, "    ");
-	mvaddstr (term_height - 1, 0, vol_string);
+	mvprintw (term_height - 1, term_width - 6, "%d dB  ", volume);
 
 	/* update display. */
 	refresh();
+}
 
-	/* free that string. */
-	free (vol_string);
+void set_pos (char *position) {
+	mvprintw (term_height - 1, 0, "%s", position);
+	refresh();
 }
 
 static int db_to_percent (int db)
@@ -31,33 +33,68 @@ static int db_to_percent (int db)
 
 void update_gst (void)
 {
-	/* TODO: update GST after key event here. */
 	set_volume(db_to_percent(volume));
 }
 
-/* identify recent key event and update everthing else accordingly. */
-void identify_key (char key)
+
+static void volume_increase ()
 {
-	switch (key) {
+	if (volume <= (0 - VOLUME_STEP))
+		volume += VOLUME_STEP;
+}
+static void volume_decrease ()
+{
+	if (volume > LOWEST_VOLUME)
+		volume -= VOLUME_STEP;
+}
 
-		case LOUDER_KEY:
-			if (volume <= (0 - VOLUME_STEP))
-				volume += VOLUME_STEP;
-			break;
 
-		case QUIETER_KEY:
-			volume -= VOLUME_STEP;
-			break;
+/* identify recent key event and update everthing else accordingly. */
+static void identify_key (int key)
+{
+	static struct keydesc keymapping[] = {
+		{KEY_PPAGE, playlist_go_previous},
+		{KEY_NPAGE, playlist_go_next},
+		{KEY_UP, volume_increase},
+		{KEY_DOWN, volume_decrease},
+		{LOUDER_KEY, volume_increase},
+		{QUIETER_KEY, volume_decrease},
+		{QUIT_KEY, quit_empamp},
+		{KEY_LEFT, seek_backwards},
+		{KEY_RIGHT, seek_forwards},
+		//{KEY_HOME, },
+		//{KEY_END, },
+		//{KEY_BACKSPACE, },
+		//{KEY_IC, },
+		//{KEY_DC, },
+		//{KEY_F(1), },
+		//{KEY_F(2), },
+		//{KEY_F(3), },
+		//{KEY_F(4), },
+		//{KEY_F(5), },
+		//{KEY_F(6), },
+		//{KEY_F(7), },
+		//{KEY_F(8), },
+		//{KEY_F(9), },
+		//{KEY_F(10), },
+		//{KEY_F(11), },
+		//{KEY_F(12), },
+		{-1, NULL}
+	};
+	for (int i = 0 ; keymapping[i].code != -1 ; i++) {
+		if (keymapping[i].code == key) {
+			keymapping[i].function ();
+			update_gst();
+			update_gui();
+			return;
+		}
 	}
-
-	update_gst();
-	update_gui();
-}	
+}
 
 /* listening for key events (blocking). */
 void *key_listener ()
 {
-	char recent_key;
+	int recent_key;
 
 	while(1)
 	{
@@ -72,7 +109,10 @@ int init_gui ()
 {
 
 	/* setup ncurses window. */
-	initscr();
+	if (initscr() == NULL) {
+		fprintf(stderr, "Error initializing ncurses.\n");
+		exit(EXIT_FAILURE);
+	}
 
 	/* no cursor. */
 	curs_set(0);
@@ -80,6 +120,9 @@ int init_gui ()
 	/* no newline or anything. */
 	nonl();
 	cbreak();
+
+	/* Predictable keypad */
+	keypad(stdscr, TRUE);
 
 	/* no echo. */
 	noecho();
@@ -93,10 +136,11 @@ int init_gui ()
 	int pret = pthread_create (&kbi_thread, NULL, key_listener, NULL);
 
 	if (pret < 0)
-		return EXIT_FAILURE;
+		exit(EXIT_FAILURE);
 
 	/* lastly, init control parameters. */
 	volume = INITIAL_VOLUME;
+	update_gst();
 
 	return EXIT_SUCCESS;
 }
@@ -104,5 +148,7 @@ int init_gui ()
 void kill_gui ()
 {
 	/* close up NCURSES window. */
+	curs_set(1);
 	endwin();
+	refresh();
 }

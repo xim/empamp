@@ -6,15 +6,16 @@ static int playlist_index = -1, playlist_size = 0;
 static char **playlist = NULL;
 
 static GstElement *playbin = NULL;
+static GMainLoop *loop = NULL;
 
-static void handle_eos (GstBus *bus, GstMessage *msg, GMainLoop *loop)
+static void handle_eos (GstBus *bus, GstMessage *msg)
 {
 	if (empamp_verbose)
 		g_print ("End of stream\n");
 	g_main_loop_quit (loop);
 }
 
-static void handle_error (GstBus *bus, GstMessage *msg, GMainLoop *loop)
+static void handle_error (GstBus *bus, GstMessage *msg)
 {
 	gchar  *debug;
 	GError *error;
@@ -27,7 +28,7 @@ static void handle_error (GstBus *bus, GstMessage *msg, GMainLoop *loop)
 	g_main_loop_quit (loop);
 }
 
-static void handle_warning (GstBus *bus, GstMessage *msg, GMainLoop *loop)
+static void handle_warning (GstBus *bus, GstMessage *msg)
 {
 	gchar  *debug;
 	GError *error;
@@ -68,18 +69,27 @@ static gchar * try_force_to_uri (gchar *path)
 	return path;
 }
 
-void playlist_set_previous ()
-{
-	playlist_index = (playlist_index - 1) % playlist_size;
-	g_object_set (G_OBJECT (playbin), "uri", playlist[playlist_index], NULL);
-}
 
-void playlist_set_next ()
+static void playlist_set_next ()
 {
 	playlist_index = (playlist_index + 1) % playlist_size;
 	if (empamp_verbose)
 		g_print ("Queueing file: %s\n", playlist[playlist_index]);
 	g_object_set (G_OBJECT (playbin), "uri", playlist[playlist_index], NULL);
+}
+
+void playlist_go_previous ()
+{
+	gst_element_set_state(playbin, GST_STATE_READY);
+	playlist_index = (playlist_size + playlist_index - 1) % playlist_size;
+	g_object_set (G_OBJECT (playbin), "uri", playlist[playlist_index], NULL);
+	gst_element_set_state(playbin, GST_STATE_PLAYING);
+}
+void playlist_go_next ()
+{
+	gst_element_set_state(playbin, GST_STATE_READY);
+	playlist_set_next ();
+	gst_element_set_state(playbin, GST_STATE_PLAYING);
 }
 
 void toggle_play_pause () {
@@ -92,43 +102,71 @@ void toggle_play_pause () {
 	}
 }
 
+static gint64 get_pos_nanosecs () {
+	gint64 position = -1;
+	GstFormat format = GST_FORMAT_TIME;
+	gst_element_query_position (playbin, &format, &position);
+	return position;
+}
+static gint64 get_dur_nanosecs () {
+	gint64 duration = -1;
+	GstFormat format = GST_FORMAT_TIME;
+	gst_element_query_duration (playbin, &format, &duration);
+	return duration;
+}
+
+void seek_backwards (void) {
+	gint64 position = get_pos_nanosecs ();
+	position += GST_SECOND * -10;
+	if (position < 0)
+		position = 0;
+	gst_element_seek_simple (playbin, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, position);
+}
+void seek_forwards (void) {
+	gint64 position = get_pos_nanosecs ();
+	position += GST_SECOND * 10;
+	if (position >= get_dur_nanosecs ()) {
+		playlist_go_next ();
+		return;
+	}
+	gst_element_seek_simple (playbin, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, position);
+}
+
 void set_volume (int volume) {
 	gdouble vol = ((gdouble) volume) / 100;
 	g_object_set (G_OBJECT (playbin), "volume", vol, NULL);
 }
 
-gboolean print_progress ()
+void quit_empamp (void) {
+	g_main_loop_quit (loop);
+}
+
+static gboolean print_progress (void)
 {
-	gint64 duration = -1;
-	gint64 position = -1;
-	GstFormat format = GST_FORMAT_TIME;
-	gchar dur_str[32], pos_str[32];
+	gint64 duration = get_dur_nanosecs ();
+	gint64 position = get_pos_nanosecs ();
+	char dur_str[15], pos_str[15], progress[32];
 
-	if (gst_element_query_position (playbin, &format, &position) &&
-			position != -1) {
-		g_snprintf (pos_str, 32, "%" GST_TIME_FORMAT, GST_TIME_ARGS (position));
+	if (position != -1) {
+		snprintf (pos_str, 15, "%" GST_TIME_FORMAT, GST_TIME_ARGS (position));
 	} else {
-		g_snprintf (pos_str, 32, "-:--:--.---------");
+		snprintf (pos_str, 15, "-:--:--.-----");
 	}
 
-	if (gst_element_query_duration (playbin, &format, &duration) &&
-			duration != -1) {
-		g_snprintf (dur_str, 32, "%" GST_TIME_FORMAT, GST_TIME_ARGS (duration));
+	if (duration != -1) {
+		snprintf (dur_str, 15, "%" GST_TIME_FORMAT, GST_TIME_ARGS (duration));
 	} else {
-		g_snprintf (dur_str, 32, "-:--:--.---------");
+		snprintf (dur_str, 15, "-:--:--.-----");
 	}
 
-	g_print ("%s / %s\r", pos_str, dur_str);
+	sprintf (progress, "%14s / %14s", pos_str, dur_str);
+	set_pos (progress);
 
 	return TRUE;
 }
 
-
 int main (int argc, char *argv[])
 {
-
-	GMainLoop *loop;
-
 	GstBus *bus;
 
 	GOptionContext *ctx;
@@ -184,8 +222,8 @@ int main (int argc, char *argv[])
 	bus = gst_pipeline_get_bus (GST_PIPELINE (playbin));
 	gst_bus_add_signal_watch (bus);
 
-	g_signal_connect (bus, "message::eos", G_CALLBACK (handle_eos), loop);
-	g_signal_connect (bus, "message::error", G_CALLBACK (handle_error), loop);
+	g_signal_connect (bus, "message::eos", G_CALLBACK (handle_eos), NULL);
+	g_signal_connect (bus, "message::error", G_CALLBACK (handle_error), NULL);
 	g_signal_connect (bus, "message::warning", G_CALLBACK (handle_warning), NULL);
 	// TODO Does this ever happen?
 	g_signal_connect (bus, "message::clock-lost", G_CALLBACK (handle_clock_loss), playbin);
@@ -197,7 +235,7 @@ int main (int argc, char *argv[])
 	playlist_set_next ();
 	toggle_play_pause ();
 
-	//g_timeout_add (33, (GSourceFunc) print_progress, playbin);
+	g_timeout_add (33, (GSourceFunc) print_progress, NULL);
 
 	/* Iterate */
 	if (empamp_verbose)

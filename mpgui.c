@@ -24,7 +24,7 @@ static struct keydesc keymapping[] = {
 static void update_gui (void)
 {
 	/* format volume string. */
-	mvprintw (term_height - 1, term_width - 7, "%d dB  ", volume);
+	mvprintw (term_height - 1, term_width - 6, "%d dB  ", volume);
 
 	/* update display. */
 	refresh();
@@ -43,17 +43,18 @@ void set_pos (char *position)
 }
 void set_status (char *message, ...)
 {
-	move (((current_logline + 1) % max_logline_offset) + min_logline, 0);
-	clrtoeol();
-	move (current_logline + min_logline, 0);
-	clrtoeol();
 	va_list argptr;
-	char output[term_width];
+	char output[term_width + 1];
 	va_start (argptr, message);
-	vsnprintf (output, term_width, message, argptr);
+	vsnprintf (output, term_width + 1, message, argptr);
+	int linelen = strlen(output);
+	if (linelen != term_width) {
+		output[linelen] = '\n';
+		output[linelen + 1] = '\0';
+	}
 	va_end (argptr);
-	printw (output);
-	current_logline = (current_logline + 1) % max_logline_offset;
+	wprintw (log_window, output);
+	wrefresh (log_window);
 }
 
 static int db_to_percent (int db)
@@ -124,10 +125,8 @@ int init_gui ()
 
 	/* get window size. */
 	getmaxyx(stdscr, term_height, term_width);
-	term_width += 1;
-	current_logline = 0;
-	min_logline = 2;
-	max_logline_offset = term_height - 4;
+	log_window = newwin (term_height - 4, term_width, 2, 0);
+	scrollok(log_window, TRUE);
 
 	/* spawn keyboard input listening thread. */
 	pthread_t kbi_thread;
@@ -139,7 +138,9 @@ int init_gui ()
 
 	/* lastly, init control parameters. */
 	volume = INITIAL_VOLUME;
+	update_gui();
 	update_gst();
+	wrefresh (log_window);
 
 	return EXIT_SUCCESS;
 }

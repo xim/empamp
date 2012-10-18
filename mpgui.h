@@ -29,7 +29,9 @@
 	};
 
 	int term_height, term_width;
-	int current_logline, min_logline, max_logline_offset;
+	int current_logline, max_logline_offset;
 	int volume;
+
+	WINDOW *log_window;
 
 #endif

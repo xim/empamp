@@ -82,6 +82,7 @@ void playlist_go_previous ()
 {
 	gst_element_set_state(playbin, GST_STATE_READY);
 	playlist_index = (playlist_size + playlist_index - 1) % playlist_size;
+	set_status ("Queueing file: %s", playlist[playlist_index]);
 	g_object_set (G_OBJECT (playbin), "uri", playlist_uris[playlist_index], NULL);
 	gst_element_set_state(playbin, GST_STATE_PLAYING);
 }
@@ -97,8 +98,11 @@ void toggle_play_pause () {
 	gst_element_get_state (playbin, &state, NULL, GST_CLOCK_TIME_NONE);
 	if (state == GST_STATE_PLAYING) {
 		gst_element_set_state (playbin, GST_STATE_PAUSED);
+		set_status ("Pausing...");
 	} else {
 		gst_element_set_state (playbin, GST_STATE_PLAYING);
+		if (empamp_verbose)
+		set_status ("Playing...");
 	}
 }
 
@@ -241,9 +245,6 @@ int main (int argc, char *argv[])
 	guint progressor = g_timeout_add (33, (GSourceFunc) print_progress, NULL);
 
 	/* Iterate */
-	if (empamp_verbose)
-		set_status ("Running...");
-
 	g_main_loop_run (loop);
 	g_source_remove (progressor);
 

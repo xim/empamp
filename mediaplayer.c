@@ -4,6 +4,7 @@
 static gboolean empamp_verbose = FALSE;
 static int playlist_index = -1, playlist_size = 0;
 static char **playlist = NULL;
+static char **playlist_uris = NULL;
 
 static GstElement *playbin = NULL;
 static GMainLoop *loop = NULL;
@@ -11,7 +12,7 @@ static GMainLoop *loop = NULL;
 static void handle_eos (GstBus *bus, GstMessage *msg)
 {
 	if (empamp_verbose)
-		g_print ("End of stream\n");
+		set_status ("End of stream");
 	g_main_loop_quit (loop);
 }
 
@@ -21,7 +22,9 @@ static void handle_error (GstBus *bus, GstMessage *msg)
 	GError *error;
 
 	gst_message_parse_error (msg, &error, &debug);
-	g_printerr ("ERROR: %s (%s)\n", error->message, (debug) ? debug : "no details");
+	char errmsg[term_width];
+	snprintf (errmsg, term_width, "ERROR: %s (%s)", error->message, (debug) ? debug : "no details");
+	set_status (errmsg);
 	g_free (debug);
 	g_error_free (error);
 
@@ -34,7 +37,9 @@ static void handle_warning (GstBus *bus, GstMessage *msg)
 	GError *error;
 
 	gst_message_parse_warning (msg, &error, &debug);
-	g_printerr ("WARNING: %s (%s)\n", error->message, (debug) ? debug : "no details");
+	char warnmsg[term_width];
+	snprintf (warnmsg, term_width, "WARNING: %s (%s)", error->message, (debug) ? debug : "no details");
+	set_status (warnmsg);
 	g_free (debug);
 	g_error_free (error);
 }
@@ -44,7 +49,9 @@ static void handle_clock_loss (GstBus *bus, GstMessage *msg)
 	GstClock *clock;
 
 	gst_message_parse_clock_lost (msg, &clock);
-	g_print ("CLOCK LOST: %s\n", GST_OBJECT_NAME (clock));
+	char warnmsg[term_width];
+	snprintf (warnmsg, term_width, "CLOCK LOST: %s", GST_OBJECT_NAME (clock));
+	set_status (warnmsg);
 
 	gst_element_set_state (playbin, GST_STATE_PAUSED);
 	gst_element_set_state (playbin, GST_STATE_PLAYING);
@@ -73,16 +80,17 @@ static gchar * try_force_to_uri (gchar *path)
 static void playlist_set_next ()
 {
 	playlist_index = (playlist_index + 1) % playlist_size;
-	if (empamp_verbose)
-		g_print ("Queueing file: %s\n", playlist[playlist_index]);
-	g_object_set (G_OBJECT (playbin), "uri", playlist[playlist_index], NULL);
+	char msg[term_width];
+	snprintf (msg, term_width, "Queueing file: %s", playlist[playlist_index]);
+	set_status (msg);
+	g_object_set (G_OBJECT (playbin), "uri", playlist_uris[playlist_index], NULL);
 }
 
 void playlist_go_previous ()
 {
 	gst_element_set_state(playbin, GST_STATE_READY);
 	playlist_index = (playlist_size + playlist_index - 1) % playlist_size;
-	g_object_set (G_OBJECT (playbin), "uri", playlist[playlist_index], NULL);
+	g_object_set (G_OBJECT (playbin), "uri", playlist_uris[playlist_index], NULL);
 	gst_element_set_state(playbin, GST_STATE_PLAYING);
 }
 void playlist_go_next ()
@@ -199,8 +207,9 @@ int main (int argc, char *argv[])
 	loop = g_main_loop_new (NULL, FALSE);
 
 	playlist_size = g_strv_length (playlist);
+	playlist_uris = malloc(sizeof(char*) * playlist_size);
 	for (int i = 0 ; i != playlist_size ; i++)
-		playlist[i] = try_force_to_uri (playlist[i]);
+		playlist_uris[i] = try_force_to_uri (playlist[i]);
 
 	/* Check input arguments */
 	if (playlist_size < 1) {
@@ -215,6 +224,8 @@ int main (int argc, char *argv[])
 		g_printerr ("Player could not be created. Exiting.\n");
 		return EXIT_FAILURE;
 	}
+
+	init_gui ();
 
 	/* Set up the pipeline */
 
@@ -235,26 +246,26 @@ int main (int argc, char *argv[])
 	playlist_set_next ();
 	toggle_play_pause ();
 
-	g_timeout_add (33, (GSourceFunc) print_progress, NULL);
+	guint progressor = g_timeout_add (33, (GSourceFunc) print_progress, NULL);
 
 	/* Iterate */
 	if (empamp_verbose)
-		g_print ("Running...\n");
+		set_status ("Running...");
 
-	init_gui ();
 	g_main_loop_run (loop);
-	kill_gui ();
+	g_source_remove (progressor);
 
 
 	/* Out of the main loop, clean up nicely */
-	g_print ("Quitting...\n");
+	set_status ("Quitting...");
 	gst_element_set_state (playbin, GST_STATE_NULL);
 
 	if (empamp_verbose)
-		g_print ("Deleting pipeline\n");
+		set_status ("Deleting pipeline");
 	gst_object_unref (playbin);
 	gst_object_unref (bus);
 	g_main_loop_unref (loop);
 
+	kill_gui ();
 	return EXIT_SUCCESS;
 }

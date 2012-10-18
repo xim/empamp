@@ -16,23 +16,7 @@ static struct keydesc keymapping[] = {
   {'q', quit_empamp},
   {KEY_LEFT, seek_backwards},
   {KEY_RIGHT, seek_forwards},
-  //{KEY_HOME, },
-  //{KEY_END, },
-  //{KEY_BACKSPACE, },
-  //{KEY_IC, },
-  //{KEY_DC, },
-  //{KEY_F(1), },
-  //{KEY_F(2), },
-  //{KEY_F(3), },
-  //{KEY_F(4), },
-  //{KEY_F(5), },
-  //{KEY_F(6), },
-  //{KEY_F(7), },
-  //{KEY_F(8), },
-  //{KEY_F(9), },
-  //{KEY_F(10), },
-  //{KEY_F(11), },
-  //{KEY_F(12), },
+  {' ', toggle_play_pause},
   {-1, NULL}
 };
 
@@ -52,9 +36,19 @@ static void update_gst (void)
 	set_volume(db_to_percent(volume));
 }
 
-void set_pos (char *position) {
+void set_pos (char *position)
+{
 	mvprintw (term_height - 1, 0, "%s", position);
 	refresh();
+}
+void set_status (char *message)
+{
+	move (((current_logline + 1) % max_logline_offset) + min_logline, 0);
+	clrtoeol();
+	move (current_logline + min_logline, 0);
+	clrtoeol();
+	printw (message);
+	current_logline = (current_logline + 1) % max_logline_offset;
 }
 
 static int db_to_percent (int db)
@@ -125,6 +119,10 @@ int init_gui ()
 
 	/* get window size. */
 	getmaxyx(stdscr, term_height, term_width);
+	term_width += 1;
+	current_logline = 0;
+	min_logline = 2;
+	max_logline_offset = term_height - 4;
 
 	/* spawn keyboard input listening thread. */
 	pthread_t kbi_thread;
@@ -144,7 +142,6 @@ int init_gui ()
 void kill_gui ()
 {
 	/* close up NCURSES window. */
-	curs_set(1);
-	endwin();
 	refresh();
+	endwin();
 }

@@ -1,24 +1,55 @@
 #include "mpgui.h"
-#include "mediaplayer.h"
 
-struct keydesc {
-	int code;
-	void (*function)();
+/* static declarations. */
+static void update_gst (void);
+static void update_gui (void);
+static int db_to_percent (int db);
+static void volume_increase ();
+static void volume_decrease ();
+static void identify_key (int key);
+
+static struct keydesc keymapping[] = {
+  {KEY_PPAGE, playlist_go_previous},
+  {KEY_NPAGE, playlist_go_next},
+  {KEY_UP, volume_increase},
+  {KEY_DOWN, volume_decrease},
+  {'q', quit_empamp},
+  {KEY_LEFT, seek_backwards},
+  {KEY_RIGHT, seek_forwards},
+  //{KEY_HOME, },
+  //{KEY_END, },
+  //{KEY_BACKSPACE, },
+  //{KEY_IC, },
+  //{KEY_DC, },
+  //{KEY_F(1), },
+  //{KEY_F(2), },
+  //{KEY_F(3), },
+  //{KEY_F(4), },
+  //{KEY_F(5), },
+  //{KEY_F(6), },
+  //{KEY_F(7), },
+  //{KEY_F(8), },
+  //{KEY_F(9), },
+  //{KEY_F(10), },
+  //{KEY_F(11), },
+  //{KEY_F(12), },
+  {-1, NULL}
 };
 
-int volume;
-
-int term_height, term_width;
-
-void update_gui (void)
+/* update gui after key event here. */
+static void update_gui (void)
 {
-	/* update gui after key event here. */
-
 	/* format volume string. */
 	mvprintw (term_height - 1, term_width - 6, "%d dB  ", volume);
 
 	/* update display. */
 	refresh();
+}
+
+/* update gst elements */
+static void update_gst (void)
+{
+	set_volume(db_to_percent(volume));
 }
 
 void set_pos (char *position) {
@@ -30,12 +61,6 @@ static int db_to_percent (int db)
 {
 	return (int) 100 * ((float) pow (2.0, (float) db / 6));
 }
-
-void update_gst (void)
-{
-	set_volume(db_to_percent(volume));
-}
-
 
 static void volume_increase ()
 {
@@ -52,35 +77,6 @@ static void volume_decrease ()
 /* identify recent key event and update everthing else accordingly. */
 static void identify_key (int key)
 {
-	static struct keydesc keymapping[] = {
-		{KEY_PPAGE, playlist_go_previous},
-		{KEY_NPAGE, playlist_go_next},
-		{KEY_UP, volume_increase},
-		{KEY_DOWN, volume_decrease},
-		{LOUDER_KEY, volume_increase},
-		{QUIETER_KEY, volume_decrease},
-		{QUIT_KEY, quit_empamp},
-		{KEY_LEFT, seek_backwards},
-		{KEY_RIGHT, seek_forwards},
-		//{KEY_HOME, },
-		//{KEY_END, },
-		//{KEY_BACKSPACE, },
-		//{KEY_IC, },
-		//{KEY_DC, },
-		//{KEY_F(1), },
-		//{KEY_F(2), },
-		//{KEY_F(3), },
-		//{KEY_F(4), },
-		//{KEY_F(5), },
-		//{KEY_F(6), },
-		//{KEY_F(7), },
-		//{KEY_F(8), },
-		//{KEY_F(9), },
-		//{KEY_F(10), },
-		//{KEY_F(11), },
-		//{KEY_F(12), },
-		{-1, NULL}
-	};
 	for (int i = 0 ; keymapping[i].code != -1 ; i++) {
 		if (keymapping[i].code == key) {
 			keymapping[i].function ();

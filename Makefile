@@ -1,9 +1,9 @@
 .PHONY: all clean
 
-all: mediaplayer
+all: empamp
 
 clean:
-	rm mediaplayer
+	rm empamp
 
-mediaplayer: mediaplayer.c mediaplayer.h mpgui.c mpgui.h
-	gcc -std=c99 -Wall mpgui.c mediaplayer.c -o mediaplayer `pkg-config --cflags --libs gstreamer-1.0 ncurses`
+empamp: mediaplayer.c mediaplayer.h mpgui.c mpgui.h
+	gcc -std=c99 -Wall mpgui.c mediaplayer.c -o empamp `pkg-config --cflags --libs gstreamer-1.0 ncurses`

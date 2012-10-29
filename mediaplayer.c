@@ -108,14 +108,12 @@ void toggle_play_pause () {
 
 static gint64 get_pos_nanosecs () {
 	gint64 position = -1;
-	GstFormat format = GST_FORMAT_TIME;
-	gst_element_query_position (playbin, &format, &position);
+	gst_element_query_position (playbin, GST_FORMAT_TIME, &position);
 	return position;
 }
 static gint64 get_dur_nanosecs () {
 	gint64 duration = -1;
-	GstFormat format = GST_FORMAT_TIME;
-	gst_element_query_duration (playbin, &format, &duration);
+	gst_element_query_duration (playbin, GST_FORMAT_TIME, &duration);
 	return duration;
 }
 
@@ -214,7 +212,7 @@ int main (int argc, char *argv[])
 	}
 
 	/* Create gstreamer elements */
-	playbin = gst_element_factory_make ("playbin2", "playbin");
+	playbin = gst_element_factory_make ("playbin", "playbin");
 
 	if (!playbin) {
 		g_printerr ("Player could not be created. Exiting.\n");
